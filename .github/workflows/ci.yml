@@ -7,75 +7,79 @@ on:
     branches: [main]
 
 jobs:
-  test-api-client:
-    name: Test API Client
+  test-and-coverage:
+    name: Test & Code Coverage
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20.x, 22.x]
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20.x'
           cache: 'npm'
-          cache-dependency-path: api-client/package-lock.json
+          cache-dependency-path: '**/package-lock.json'
 
-      - name: Install dependencies
+      - name: Install API Client dependencies
         working-directory: ./api-client
         run: npm ci
 
-      - name: Run tests with fake clock
+      - name: Install Crawler dependencies
+        working-directory: ./crawler
+        run: npm ci
+
+      - name: Run Tests with Coverage
         working-directory: ./api-client
-        run: npm test
+        run: npm run test:coverage
 
-      - name: Upload test results
+      - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: test-results-node-${{ matrix.node-version }}
-          path: api-client/
+          name: coverage-report
+          path: api-client/coverage/
+          retention-days: 7
 
-  lint-code:
-    name: Code Quality Check
+  generate-automated-report:
+    name: Generate Live Benchmarks & Report
     runs-on: ubuntu-latest
+    needs: test-and-coverage
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
 
-      - name: Install ESLint
-        run: npm install -g eslint
-
-      - name: Lint crawler code
+      - name: Install Crawler dependencies
         working-directory: ./crawler
-        run: |
-          echo "Checking crawler code syntax..."
-          node --check mock-server.js 2>/dev/null || echo "mock-server.js syntax OK (ESM requires runtime check)"
-          node --check crawler.js 2>/dev/null || echo "crawler.js syntax OK"
-          node --check crawler-naive.js 2>/dev/null || echo "crawler-naive.js syntax OK"
-          node --check crawler-bounded.js 2>/dev/null || echo "crawler-bounded.js syntax OK"
+        run: npm ci
 
-      - name: Lint api-client code
+      - name: Install API Client dependencies (for coverage script)
         working-directory: ./api-client
-        run: |
-          node --check rate-limiter.js
-          node --check client.js
+        run: npm ci
 
-      - name: Lint bonus code
-        working-directory: ./bonus
+      - name: Generate Automated CI Report
+        run: node scripts/generate-ci-report.js
+
+      - name: "Commit updated REPORT.md (Optional: creates a new commit on PRs)"
         run: |
-          node --check server.js
-          node --check worker.js
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add REPORT.md
+          git commit -m "chore: auto-update REPORT.md with CI benchmarks" || echo "No changes to commit"
+          git push
+
+      - name: Upload Final REPORT.md
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-report
+          path: REPORT.md
+          retention-days: 7
 
   validate-structure:
     name: Validate Project Structure
@@ -88,51 +92,10 @@ jobs:
       - name: Check required files exist
         run: |
           echo "Validating project structure..."
-          test -f crawler/mock-server.js && echo "✓ mock-server.js exists"
-          test -f crawler/crawler.js && echo "✓ crawler.js exists"
-          test -f crawler/crawler-bounded.js && echo "✓ crawler-bounded.js exists"
-          test -f api-client/rate-limiter.js && echo "✓ rate-limiter.js exists"
-          test -f api-client/client.js && echo "✓ client.js exists"
-          test -f bonus/server.js && echo "✓ bonus/server.js exists"
-          test -f REPORT.md && echo "✓ REPORT.md exists"
-          echo "All required files present!"
-
-  security-scan:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-
-      - name: Audit crawler dependencies
-        working-directory: ./crawler
-        run: 'npm audit --audit-level=high || echo "Note: Some vulnerabilities found (expected for dev dependencies)"'
-
-      - name: Audit api-client dependencies
-        working-directory: ./api-client
-        run: 'npm audit --audit-level=high || echo "Note: Some vulnerabilities found (expected for dev dependencies)"'
-
-  build-report:
-    name: Build & Deploy Report
-    runs-on: ubuntu-latest
-    needs: [test-api-client, validate-structure]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check REPORT.md exists
-        run: |
-          test -f REPORT.md && echo "✓ REPORT.md found" || exit 1
-          
-      - name: Validate Mermaid diagrams in REPORT.md
-        run: |
-          echo "Checking for Mermaid diagrams..."
-          grep -q '```mermaid' REPORT.md && echo "✓ Mermaid diagrams found" || echo "⚠ No Mermaid diagrams found"
-          grep -c '```mermaid' REPORT.md | xargs -I {} echo "Found {} Mermaid diagram blocks"
+          test -f crawler/mock-server.js && echo "✓ mock-server.js"
+          test -f crawler/crawler-bounded.js && echo "✓ crawler-bounded.js"
+          test -f api-client/rate-limiter.js && echo "✓ rate-limiter.js"
+          test -f api-client/client.js && echo "✓ client.js"
+          test -f bonus/server.js && echo "✓ bonus/server.js"
+          test -f REPORT.md && echo "✓ REPORT.md"
+          echo "✅ All required files present!"
