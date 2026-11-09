@@ -1,5 +1,5 @@
 // crawler.js - Task 1: Sequential Crawler
-import { fetch } from 'undici'; // Node 20+ has global fetch, but undici is reliable
+ // Node 20+ has global fetch, but undici is reliable
 
 const BASE_URL = 'http://localhost:4000';
 const MAX_PAGES = 200;

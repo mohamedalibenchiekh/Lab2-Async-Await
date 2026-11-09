@@ -1,5 +1,7 @@
 // crawler-bounded.js - Task 3: Bounded Crawler (Worker Pool)
-import { fetch } from 'undici';
+
+// With this (Node 20+ has global fetch):
+// No import needed - fetch is global in Node 20+
 
 const BASE_URL = 'http://localhost:4000';
 const MAX_PAGES = 2000; // Test with 2000 to compare with naive!

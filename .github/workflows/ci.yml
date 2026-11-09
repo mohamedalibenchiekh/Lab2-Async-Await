@@ -65,6 +65,8 @@ jobs:
 
       - name: Generate Automated CI Report
         run: node scripts/generate-ci-report.js
+        env:
+          NODE_OPTIONS: "--no-warnings"
 
       - name: "Commit updated REPORT.md (Optional: creates a new commit on PRs)"
         run: |

@@ -1,5 +1,5 @@
 // crawler-naive.js - Task 2: Naive Parallel Crawler
-import { fetch } from 'undici';
+
 
 const BASE_URL = 'http://localhost:4000';
 const MAX_PAGES = 2000; // 💡 Try changing this to 2000 later to see it break!
