@@ -59,7 +59,7 @@ jobs:
         working-directory: ./crawler
         run: npm ci
 
-      - name: Install API Client dependencies (for coverage script)
+      - name: Install API Client dependencies
         working-directory: ./api-client
         run: npm ci
 
@@ -68,21 +68,20 @@ jobs:
         env:
           NODE_OPTIONS: "--no-warnings"
 
-      - name: "Commit updated REPORT.md (Optional: creates a new commit on PRs)"
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add REPORT.md
-          git commit -m "chore: auto-update REPORT.md with CI benchmarks" || echo "No changes to commit"
-          git push
-
-      - name: Upload Final REPORT.md
+      # Instead of pushing, upload as artifact
+      - name: Upload Updated REPORT.md
         uses: actions/upload-artifact@v4
         with:
-          name: final-report
+          name: report-with-ci-metrics
           path: REPORT.md
           retention-days: 7
 
+      - name: Display Report Summary
+        run: |
+          echo "✅ CI Report generated successfully!"
+          echo "📊 The updated REPORT.md with coverage metrics has been uploaded as an artifact."
+          echo "📥 Download it from the 'Artifacts' section of this workflow run."
+          
   validate-structure:
     name: Validate Project Structure
     runs-on: ubuntu-latest
