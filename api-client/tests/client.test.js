@@ -4,12 +4,12 @@ import assert from 'node:assert';
 import { TokenBucketRateLimiter } from '../rate-limiter.js';
 
 describe('TokenBucketRateLimiter with Fake Clock', () => {
-  // Enable fake timers before each test
+  // Enable ALL fake timers by default (Date, setTimeout, setInterval, etc.)
   beforeEach(() => {
-    mock.timers.enable({ apis: ['Date', 'setTimeout', 'clearTimeout'] });
+    mock.timers.enable();
   });
 
-  // Reset timers after each test so they don't leak
+  // Reset timers after each test so they don't leak into other tests
   afterEach(() => {
     mock.timers.reset();
   });
