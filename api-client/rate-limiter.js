@@ -1,23 +1,20 @@
 // rate-limiter.js - Token Bucket Implementation
 export class TokenBucketRateLimiter {
-  constructor(ratePerSecond, burstCapacity, options = {}) {
+  constructor(ratePerSecond, burstCapacity) {
     this.ratePerSecond = ratePerSecond;
     this.burstCapacity = burstCapacity;
     this.tokens = burstCapacity;
-    // Injected clock, defaults to real Date.now and setTimeout
-    this.now = options.now || (() => Date.now());
-    this.setTimeout = options.setTimeout || setTimeout;
-    this.lastRefillTime = this.now();
+    this.lastRefillTime = Date.now();
     this.waitQueue = []; // FIFO queue for waiting callers
   }
 
   _refill() {
-    const currentTime = this.now();
-    const elapsedSeconds = (currentTime - this.lastRefillTime) / 1000;
+    const now = Date.now();
+    const elapsedSeconds = (now - this.lastRefillTime) / 1000;
     const tokensToAdd = elapsedSeconds * this.ratePerSecond;
     
     this.tokens = Math.min(this.burstCapacity, this.tokens + tokensToAdd);
-    this.lastRefillTime = currentTime;
+    this.lastRefillTime = now;
   }
 
   async acquire() {
@@ -28,7 +25,6 @@ export class TokenBucketRateLimiter {
       return; // Got a token immediately
     }
 
-    // Not enough tokens: calculate wait time and queue the caller
     const tokensNeeded = 1 - this.tokens;
     const waitTimeMs = (tokensNeeded / this.ratePerSecond) * 1000;
 
@@ -47,7 +43,7 @@ export class TokenBucketRateLimiter {
 
     const nextCaller = this.waitQueue[0];
     
-    this.setTimeout(() => {
+    setTimeout(() => {
       this._refill();
       this.tokens -= 1;
       this.waitQueue.shift(); // Remove the resolved caller
